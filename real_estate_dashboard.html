@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real Estate Survey Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --card: #1e2333;
+    --border: #2a3045;
+    --accent1: #e8a045;
+    --accent2: #5b8cf7;
+    --accent3: #6fcf97;
+    --accent4: #eb5757;
+    --text: #e8eaf0;
+    --muted: #7a849e;
+    --heading: #f5f6fa;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  header {
+    background: linear-gradient(135deg, #12162099 0%, #1a1f2e 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 40px 22px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 260px; height: 260px;
+    background: radial-gradient(circle, rgba(232,160,69,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-title h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    color: var(--heading);
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  .header-title h1 span { color: var(--accent1); font-style: italic; }
+  .header-title p { color: var(--muted); font-size: 13px; margin-top: 6px; font-weight: 300; }
+  .header-badge {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+  }
+  .header-badge strong { display: block; font-size: 22px; color: var(--accent1); font-family: 'DM Serif Display', serif; }
+
+  /* KPI Row */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    padding: 24px 40px 0;
+  }
+  .kpi {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 22px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi:hover { border-color: var(--accent1); }
+  .kpi::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 12px 12px 0 0;
+  }
+  .kpi:nth-child(1)::after { background: var(--accent1); }
+  .kpi:nth-child(2)::after { background: var(--accent2); }
+  .kpi:nth-child(3)::after { background: var(--accent3); }
+  .kpi:nth-child(4)::after { background: var(--accent4); }
+  .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); font-weight: 500; }
+  .kpi-value { font-family: 'DM Serif Display', serif; font-size: 2rem; color: var(--heading); margin-top: 6px; line-height: 1; }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* Grid */
+  .dashboard {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto;
+    gap: 14px;
+    padding: 20px 40px 40px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: rgba(232,160,69,0.3); }
+  .card-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 12px;
+    background: var(--accent1);
+    border-radius: 2px;
+  }
+  .span2 { grid-column: span 2; }
+  .span3 { grid-column: span 3; }
+  canvas { display: block; }
+
+  /* Donut legend */
+  .donut-wrap { display: flex; align-items: center; gap: 20px; }
+  .donut-legend { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .legend-label { color: var(--text); flex: 1; }
+  .legend-val { color: var(--muted); font-weight: 600; }
+
+  /* Bar horizontal */
+  .hbar-wrap { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .hbar-row { display: flex; align-items: center; gap: 10px; }
+  .hbar-label { font-size: 12px; color: var(--text); width: 80px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hbar-track { flex: 1; background: var(--surface); border-radius: 4px; height: 22px; overflow: hidden; position: relative; }
+  .hbar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: 600; color: #fff; transition: width 0.6s ease; }
+  .hbar-count { font-size: 11px; color: var(--muted); width: 28px; text-align: right; }
+
+  /* Rating stars visual */
+  .rating-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .rating-row { display: flex; align-items: center; gap: 10px; }
+  .rating-star { font-size: 13px; color: var(--muted); width: 20px; }
+  .rating-bar { flex: 1; background: var(--surface); border-radius: 3px; height: 16px; overflow: hidden; }
+  .rating-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent1), #f5c842); border-radius: 3px; }
+  .rating-num { font-size: 11px; color: var(--muted); width: 24px; text-align: right; }
+
+  /* Two-col stat */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+  .stat-box { background: var(--surface); border-radius: 8px; padding: 14px; text-align: center; }
+  .stat-box-val { font-family: 'DM Serif Display', serif; font-size: 1.6rem; color: var(--heading); }
+  .stat-box-lbl { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .stat-box-bar { height: 3px; border-radius: 2px; margin-top: 10px; }
+
+  footer {
+    text-align: center;
+    padding: 16px;
+    font-size: 11px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">
+    <h1>Real Estate <span>Market Survey</span></h1>
+    <p>Property listings analysis — Maharashtra &amp; beyond &nbsp;·&nbsp; DA Response Survey</p>
+  </div>
+  <div class="header-badge">
+    <strong>100</strong>
+    survey responses
+  </div>
+</header>
+
+<!-- KPI Row -->
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-label">Avg Selling Price</div>
+    <div class="kpi-value">₹174.8L</div>
+    <div class="kpi-sub">Lakhs across all listings</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Avg Area</div>
+    <div class="kpi-value">1,602</div>
+    <div class="kpi-sub">square feet</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Avg BHK</div>
+    <div class="kpi-value">3.1</div>
+    <div class="kpi-sub">bedrooms per property</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Gated Community</div>
+    <div class="kpi-value">83%</div>
+    <div class="kpi-sub">of properties</div>
+  </div>
+</div>
+
+<!-- Charts Grid -->
+<div class="dashboard">
+
+  <!-- City Distribution (horizontal bar) -->
+  <div class="card span2">
+    <div class="card-title">Listings by City (Top 10)</div>
+    <div class="hbar-wrap" id="city-bars"></div>
+  </div>
+
+  <!-- Property Type Donut -->
+  <div class="card">
+    <div class="card-title">Property Type</div>
+    <div class="donut-wrap">
+      <canvas id="propTypeChart" width="130" height="130"></canvas>
+      <div class="donut-legend" id="propTypeLegend"></div>
+    </div>
+  </div>
+
+  <!-- BHK Distribution -->
+  <div class="card">
+    <div class="card-title">BHK Distribution</div>
+    <canvas id="bhkChart" height="160"></canvas>
+  </div>
+
+  <!-- Avg Price by City -->
+  <div class="card span2">
+    <div class="card-title">Avg Price by City (₹ Lakhs)</div>
+    <canvas id="priceByCity" height="160"></canvas>
+  </div>
+
+  <!-- Location Type Donut -->
+  <div class="card">
+    <div class="card-title">Location Type</div>
+    <div class="donut-wrap">
+      <canvas id="locTypeChart" width="130" height="130"></canvas>
+      <div class="donut-legend" id="locTypeLegend"></div>
+    </div>
+  </div>
+
+  <!-- New vs Resale + Amenities -->
+  <div class="card">
+    <div class="card-title">New vs Resale</div>
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-box-val" style="color:var(--accent3)">76%</div>
+        <div class="stat-box-lbl">New</div>
+        <div class="stat-box-bar" style="background:var(--accent3);width:76%"></div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-val" style="color:var(--accent2)">24%</div>
+        <div class="stat-box-lbl">Resale</div>
+        <div class="stat-box-bar" style="background:var(--accent2);width:24%"></div>
+      </div>
+    </div>
+    <div class="card-title" style="margin-top:18px">Amenities Available</div>
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-box-val" style="color:var(--accent1)">62%</div>
+        <div class="stat-box-lbl">With Amenities</div>
+        <div class="stat-box-bar" style="background:var(--accent1);width:62%"></div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-val" style="color:var(--muted)">38%</div>
+        <div class="stat-box-lbl">Without</div>
+        <div class="stat-box-bar" style="background:var(--border);width:38%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Avg Price by Property Type -->
+  <div class="card">
+    <div class="card-title">Avg Price by Property Type</div>
+    <canvas id="priceByType" height="170"></canvas>
+  </div>
+
+  <!-- Locality Rating -->
+  <div class="card">
+    <div class="card-title">Locality Rating Distribution</div>
+    <div class="rating-wrap" id="ratingBars"></div>
+  </div>
+
+  <!-- Area vs Price Scatter -->
+  <div class="card span3">
+    <div class="card-title">Area vs Selling Price (₹ Lakhs) — by Property Type</div>
+    <canvas id="scatterChart" height="200"></canvas>
+  </div>
+
+</div>
+
+<footer>Real Estate Survey Dashboard · 100 responses · Built from DA_Response_sheet</footer>
+
+<script>
+const COLORS = {
+  apartment: '#5b8cf7',
+  independent: '#e8a045',
+  villa: '#6fcf97',
+  urban: '#5b8cf7',
+  semiurban: '#e8a045',
+  rural: '#6fcf97',
+  accent1: '#e8a045',
+  accent2: '#5b8cf7',
+  accent3: '#6fcf97',
+  accent4: '#eb5757',
+};
+const GRID = { color: 'rgba(255,255,255,0.04)' };
+const TICK = { color: '#7a849e', font: { size: 11, family: 'DM Sans' } };
+
+Chart.defaults.color = '#7a849e';
+Chart.defaults.font.family = 'DM Sans';
+
+// --- City Horizontal Bars ---
+const cityData = {
+  "Pune": 27, "Nashik": 13, "Nanded": 8, "Dhule": 7,
+  "Mumbai": 6, "Nagpur": 3, "Chandrapur": 2, "Buldhana": 2,
+  "Ahilyanagar": 2, "Delhi": 2
+};
+const maxCity = Math.max(...Object.values(cityData));
+const barColors = ['#e8a045','#5b8cf7','#6fcf97','#eb5757','#b97ef7','#4ecdc4','#f7b731','#a8e063','#ff6b9d','#56ccf2'];
+const cityWrap = document.getElementById('city-bars');
+Object.entries(cityData).forEach(([city, count], i) => {
+  const pct = (count / maxCity * 100).toFixed(0);
+  cityWrap.innerHTML += `
+    <div class="hbar-row">
+      <div class="hbar-label">${city}</div>
+      <div class="hbar-track">
+        <div class="hbar-fill" style="width:${pct}%;background:${barColors[i]}">${count}</div>
+      </div>
+      <div class="hbar-count">${count}</div>
+    </div>`;
+});
+
+// --- Property Type Donut ---
+const propData = { "Apartment": 47, "Independent House": 45, "Villa": 8 };
+const propColors = [COLORS.apartment, COLORS.independent, COLORS.villa];
+new Chart(document.getElementById('propTypeChart'), {
+  type: 'doughnut',
+  data: {
+    labels: Object.keys(propData),
+    datasets: [{ data: Object.values(propData), backgroundColor: propColors, borderWidth: 0, hoverOffset: 6 }]
+  },
+  options: {
+    cutout: '68%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}` } } }
+  }
+});
+const propLeg = document.getElementById('propTypeLegend');
+Object.keys(propData).forEach((k, i) => {
+  propLeg.innerHTML += `<div class="legend-item"><div class="legend-dot" style="background:${propColors[i]}"></div><span class="legend-label">${k}</span><span class="legend-val">${propData[k]}</span></div>`;
+});
+
+// --- BHK Distribution ---
+new Chart(document.getElementById('bhkChart'), {
+  type: 'bar',
+  data: {
+    labels: ['1 BHK','2 BHK','3 BHK','4 BHK','5 BHK','6 BHK','8 BHK'],
+    datasets: [{
+      data: [10, 22, 34, 23, 7, 3, 1],
+      backgroundColor: ['#e8a04588','#5b8cf788','#6fcf9788','#eb575788','#b97ef788','#4ecdc488','#f7b73188'],
+      borderColor:     ['#e8a045',  '#5b8cf7',  '#6fcf97',  '#eb5757',  '#b97ef7',  '#4ecdc4',  '#f7b731'],
+      borderWidth: 1.5, borderRadius: 5
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: GRID, ticks: TICK },
+      y: { grid: GRID, ticks: TICK, beginAtZero: true }
+    }
+  }
+});
+
+// --- Price by City Bar ---
+const priceCity = { "Buldhana": 128, "Chandrapur": 353.2, "Dhule": 307.9, "Mumbai": 157.3, "Nagpur": 43, "Nanded": 194.9, "Nashik": 221.7, "Pune": 223.2 };
+new Chart(document.getElementById('priceByCity'), {
+  type: 'bar',
+  data: {
+    labels: Object.keys(priceCity),
+    datasets: [{
+      data: Object.values(priceCity),
+      backgroundColor: Object.keys(priceCity).map((_, i) => barColors[i] + '99'),
+      borderColor: Object.keys(priceCity).map((_, i) => barColors[i]),
+      borderWidth: 1.5, borderRadius: 5
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: GRID, ticks: TICK },
+      y: { grid: GRID, ticks: { ...TICK, callback: v => '₹' + v + 'L' }, beginAtZero: true }
+    }
+  }
+});
+
+// --- Location Type Donut ---
+const locData = { "Urban": 63, "Semi-Urban": 24, "Rural": 13 };
+const locColors = [COLORS.urban, COLORS.semiurban, COLORS.rural];
+new Chart(document.getElementById('locTypeChart'), {
+  type: 'doughnut',
+  data: {
+    labels: Object.keys(locData),
+    datasets: [{ data: Object.values(locData), backgroundColor: locColors, borderWidth: 0, hoverOffset: 6 }]
+  },
+  options: { cutout: '68%', plugins: { legend: { display: false } } }
+});
+const locLeg = document.getElementById('locTypeLegend');
+Object.keys(locData).forEach((k, i) => {
+  locLeg.innerHTML += `<div class="legend-item"><div class="legend-dot" style="background:${locColors[i]}"></div><span class="legend-label">${k}</span><span class="legend-val">${locData[k]}</span></div>`;
+});
+
+// --- Price by Property Type ---
+new Chart(document.getElementById('priceByType'), {
+  type: 'bar',
+  data: {
+    labels: ['Apartment', 'Independent\nHouse', 'Villa'],
+    datasets: [{
+      data: [106.3, 251.9, 144.4],
+      backgroundColor: [COLORS.apartment + '99', COLORS.independent + '99', COLORS.villa + '99'],
+      borderColor: [COLORS.apartment, COLORS.independent, COLORS.villa],
+      borderWidth: 1.5, borderRadius: 6
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: GRID, ticks: { ...TICK, callback: v => '₹' + v + 'L' }, beginAtZero: true },
+      y: { grid: { display: false }, ticks: TICK }
+    }
+  }
+});
+
+// --- Locality Rating ---
+const ratingData = { "1 ★": 3, "2 ★": 1, "3 ★": 4, "4 ★": 25, "5 ★": 67 };
+const maxRating = 67;
+const ratingWrap = document.getElementById('ratingBars');
+Object.entries(ratingData).forEach(([star, count]) => {
+  const pct = (count / maxRating * 100).toFixed(0);
+  ratingWrap.innerHTML += `
+    <div class="rating-row">
+      <div class="rating-star">${star}</div>
+      <div class="rating-bar"><div class="rating-bar-fill" style="width:${pct}%"></div></div>
+      <div class="rating-num">${count}</div>
+    </div>`;
+});
+
+// --- Scatter Chart ---
+const scatter = [{"x":1200,"y":250,"t":"Apartment"},{"x":2185,"y":80,"t":"Apartment"},{"x":2000,"y":20,"t":"Independent House"},{"x":1700,"y":1000,"t":"Independent House"},{"x":200,"y":40,"t":"Independent House"},{"x":100,"y":50,"t":"Apartment"},{"x":2000,"y":500,"t":"Independent House"},{"x":2000,"y":300,"t":"Independent House"},{"x":2000,"y":200,"t":"Independent House"},{"x":2000,"y":700,"t":"Independent House"},{"x":900,"y":500,"t":"Apartment"},{"x":2000,"y":1000,"t":"Independent House"},{"x":4000,"y":2000,"t":"Independent House"},{"x":3500,"y":500,"t":"Independent House"},{"x":300,"y":700,"t":"Independent House"},{"x":20,"y":35,"t":"Independent House"},{"x":2000,"y":100,"t":"Apartment"},{"x":46,"y":50,"t":"Apartment"},{"x":900,"y":50,"t":"Apartment"},{"x":650,"y":30,"t":"Apartment"},{"x":1428,"y":90,"t":"Independent House"},{"x":900,"y":56,"t":"Apartment"},{"x":700,"y":40,"t":"Apartment"},{"x":1000,"y":100,"t":"Independent House"},{"x":1600,"y":500,"t":"Apartment"},{"x":1245,"y":250,"t":"Apartment"},{"x":1500,"y":50,"t":"Apartment"},{"x":800,"y":60,"t":"Apartment"},{"x":2000,"y":100,"t":"Apartment"},{"x":1200,"y":35,"t":"Independent House"},{"x":1326,"y":130,"t":"Independent House"},{"x":1500,"y":160,"t":"Independent House"},{"x":800,"y":100,"t":"Apartment"},{"x":500,"y":40,"t":"Apartment"},{"x":2000,"y":50,"t":"Independent House"},{"x":2000,"y":89,"t":"Apartment"},{"x":1500,"y":56,"t":"Apartment"},{"x":700,"y":100,"t":"Apartment"},{"x":750,"y":100,"t":"Independent House"},{"x":5000,"y":20,"t":"Villa"},{"x":3000,"y":35,"t":"Apartment"},{"x":1000,"y":2,"t":"Independent House"},{"x":1000,"y":19,"t":"Apartment"},{"x":3000,"y":500,"t":"Independent House"},{"x":1000,"y":20,"t":"Independent House"},{"x":700,"y":35,"t":"Independent House"},{"x":2000,"y":300,"t":"Apartment"},{"x":1500,"y":100,"t":"Independent House"},{"x":850,"y":10,"t":"Independent House"},{"x":900,"y":48,"t":"Apartment"},{"x":1200,"y":60,"t":"Independent House"},{"x":1300,"y":65,"t":"Villa"},{"x":200,"y":50,"t":"Independent House"},{"x":350,"y":80,"t":"Apartment"},{"x":550,"y":100,"t":"Apartment"},{"x":480,"y":200,"t":"Villa"},{"x":550,"y":95,"t":"Independent House"},{"x":2000,"y":200,"t":"Villa"},{"x":350,"y":85,"t":"Independent House"},{"x":550,"y":95,"t":"Apartment"},{"x":450,"y":100,"t":"Apartment"},{"x":2000,"y":90,"t":"Independent House"},{"x":900,"y":65,"t":"Apartment"},{"x":450,"y":500,"t":"Villa"},{"x":678,"y":55,"t":"Apartment"},{"x":800,"y":55,"t":"Independent House"},{"x":650,"y":3.5,"t":"Apartment"},{"x":1500,"y":6.5,"t":"Apartment"},{"x":100,"y":100,"t":"Independent House"},{"x":3000,"y":400,"t":"Apartment"},{"x":600,"y":30,"t":"Villa"},{"x":1200,"y":8,"t":"Apartment"},{"x":4000,"y":10,"t":"Independent House"},{"x":900,"y":40,"t":"Independent House"},{"x":5000,"y":100,"t":"Apartment"},{"x":200,"y":34,"t":"Apartment"},{"x":2000,"y":67,"t":"Independent House"}];
+
+const typeMap = { "Apartment": COLORS.apartment, "Independent House": COLORS.independent, "Villa": COLORS.villa };
+const datasets = ["Apartment","Independent House","Villa"].map(type => ({
+  label: type,
+  data: scatter.filter(d => d.t === type).map(d => ({ x: d.x, y: d.y })),
+  backgroundColor: typeMap[type] + 'bb',
+  borderColor: typeMap[type],
+  borderWidth: 1, pointRadius: 5, pointHoverRadius: 7
+}));
+
+new Chart(document.getElementById('scatterChart'), {
+  type: 'scatter',
+  data: { datasets },
+  options: {
+    plugins: { legend: { labels: { color: '#7a849e', font: { size: 11 }, pointStyle: 'circle', usePointStyle: true } } },
+    scales: {
+      x: { grid: GRID, ticks: { ...TICK, callback: v => v + ' sqft' }, title: { display: true, text: 'Area (sqft)', color: '#7a849e', font: { size: 11 } } },
+      y: { grid: GRID, ticks: { ...TICK, callback: v => '₹' + v + 'L' }, title: { display: true, text: 'Price (₹ Lakhs)', color: '#7a849e', font: { size: 11 } } }
+    }
+  }
+});
+</script>
+</body>
+</html>
